@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Twin — MVP v0 screen draft</title>
+<style>
+  :root{
+    --bg:#0b0c10; --panel:#0f1117; --card:#161922; --card2:#1b1f2b;
+    --line:#242938; --text:#e9ebf2; --muted:#8b92a6; --dim:#5f6679;
+    --accent:#8b7dff; --green:#46d39a; --amber:#f5a35b; --red:#ff6b81;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(900px 500px at 15% -10%, #1a1730 0%, transparent 60%),
+      radial-gradient(700px 400px at 95% 0%, #10202a 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:44px 22px 70px;
+  }
+  header{max-width:1460px;margin:0 auto 34px}
+  .kicker{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 10px}
+  h1{font-size:30px;line-height:1.2;margin:0 0 10px;font-weight:650;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:14.5px;max-width:760px;line-height:1.55;margin:0}
+  .loop{
+    display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    margin-top:20px;font-size:12.5px;color:var(--muted)
+  }
+  .loop span{background:#141722;border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#c7ccdb}
+  .loop i{color:var(--dim);font-style:normal}
+
+  .grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,336px));
+    gap:30px 34px;justify-content:center;max-width:1460px;margin:0 auto
+  }
+  .rail{display:flex;flex-direction:column;gap:10px}
+  .rail .label{font-size:12px;color:var(--muted);padding-left:6px}
+  .rail .label b{color:#dfe3ee;font-weight:600}
+
+  .phone{
+    width:100%;height:672px;background:var(--panel);border:1px solid var(--line);
+    border-radius:32px;overflow:hidden;position:relative;
+    box-shadow:0 26px 60px -24px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.04);
+    display:flex;flex-direction:column
+  }
+  .statusbar{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:9px 18px 4px;font-size:11px;color:var(--dim);letter-spacing:.02em
+  }
+  .statusbar .dot{width:6px;height:6px;border-radius:50%;background:var(--dim);display:inline-block;margin-right:5px}
+
+  .body{flex:1;overflow:hidden;padding:0 16px 10px}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;margin:6px 0 14px}
+  .top h2{font-size:22px;margin:0;font-weight:620;letter-spacing:-.01em}
+  .top .meta{font-size:11.5px;color:var(--muted);margin-top:3px}
+  .icon{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);display:grid;place-items:center;color:var(--muted)}
+  .section-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:12px 0 7px;font-weight:600}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:13px}
+  .card + .card{margin-top:10px}
+
+  /* dump */
+  .editor{
+    background:#101320;border:1px solid var(--line);border-radius:15px;padding:13px 13px 34px;
+    position:relative;min-height:128px
+  }
+  .editor p{margin:0;font-size:13.5px;line-height:1.6;color:#cfd4e3}
+  .editor .ghost{color:var(--dim)}
+  .editor .mic{
+    position:absolute;right:10px;bottom:9px;width:30px;height:30px;border-radius:50%;
+    background:#1d2233;border:1px solid #2c3247;display:grid;place-items:center;color:#b7bdd2
+  }
+  .modes{display:flex;gap:7px;margin:11px 0}
+  .pill{font-size:12px;padding:6px 13px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+  .pill.on{background:#221d3d;border-color:#4a3f8f;color:#cfc7ff}
+  .btn{
+    width:100%;border:0;border-radius:13px;padding:12px;font-size:14px;font-weight:600;
+    background:linear-gradient(180deg,#9a8dff,#7a6af2);color:#100e1f;letter-spacing:.01em
+  }
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:#c3c9db;font-weight:500}
+  .btn.sm{width:auto;padding:7px 12px;font-size:12px;border-radius:10px}
+
+  .proposal{background:#121524;border:1px solid #2a2f45;border-radius:15px;padding:12px;margin-top:13px}
+  .proposal .head{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:9px}
+  .proposal .head b{color:#cfc7ff;font-weight:600}
+  .row{display:flex;gap:9px;align-items:flex-start;padding:6px 0;font-size:13px;line-height:1.45;color:#dfe3ee}
+  .box{
+    width:16px;height:16px;border-radius:5px;border:1.4px solid #3a4157;flex:0 0 16px;margin-top:1px;
+    display:grid;place-items:center;font-size:10px;color:#0f1117
+  }
+  .box.on{background:var(--accent);border-color:var(--accent)}
+  .row .tag{display:block;font-size:11px;color:var(--dim);margin-top:2px}
+  .inline{display:flex;gap:8px;margin-top:10px;align-items:center}
+  .link{font-size:12px;color:var(--dim);text-align:center;flex:1}
+
+  /* insights */
+  .chips{display:flex;gap:7px;margin-bottom:13px;overflow:hidden}
+  .chip{font-size:11.5px;padding:6px 11px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+  .chip.on{background:#1f1a38;border-color:#463c86;color:#d3ccff}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .badge .d{width:6px;height:6px;border-radius:50%}
+  .d.active{background:var(--amber)} .d.prac{background:var(--accent)} .d.emb{background:var(--green)}
+  .stmt{font-size:14px;line-height:1.5;margin:8px 0 9px;color:#eef0f7}
+  .kvs{font-size:11.5px;color:var(--muted);line-height:1.75}
+  .kvs b{color:#c9cfe1;font-weight:500}
+  .foot{display:flex;gap:8px;margin-top:11px;align-items:center}
+
+  /* plan */
+  .goal{font-size:13px;color:#cfd4e3;margin:0 0 2px;line-height:1.5}
+  .done{text-decoration:line-through;color:var(--dim)}
+  .kv-line{display:flex;gap:9px;font-size:12px;padding:5px 0;color:#c9cfe1}
+  .kv-line b{color:var(--dim);font-weight:600;width:82px;flex:0 0 82px;letter-spacing:.04em;font-size:10.5px;text-transform:uppercase;padding-top:1px}
+  .divider{height:1px;background:var(--line);margin:13px 0}
+
+  /* self */
+  .claim{font-size:15px;line-height:1.5;margin:8px 0 12px;color:#f0f2f8}
+  .bar{height:6px;border-radius:6px;background:#202536;overflow:hidden;margin:2px 0 7px}
+  .bar i{display:block;height:100%;width:60%;background:linear-gradient(90deg,#7a6af2,#9a8dff)}
+  .barcap{display:flex;justify-content:space-between;font-size:10.5px;color:var(--dim)}
+  .act{display:flex;gap:9px;padding:8px 0;border-top:1px solid #1f2431}
+  .act:first-of-type{border-top:0}
+  .act .txt{font-size:12.8px;line-height:1.45;color:#dfe3ee}
+  .ev{font-size:10.8px;color:var(--green);margin-top:3px;line-height:1.45}
+  .ev.none{color:var(--dim)}
+  .counter{border:1px dashed #333a4d;border-radius:12px;padding:10px;margin-top:11px;font-size:11.5px;color:var(--muted);line-height:1.5}
+
+  /* tabs */
+  .tabs{
+    display:flex;border-top:1px solid var(--line);background:#0c0e14;padding:7px 4px 9px;
+  }
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;color:#5f6679;letter-spacing:.03em}
+  .tab svg{width:19px;height:19px}
+  .tab.on{color:var(--accent)}
+  .homebar{height:4px;width:96px;border-radius:4px;background:#232838;margin:6px auto 0}
+  .legend{max-width:1460px;margin:34px auto 0;font-size:12px;color:var(--dim);line-height:1.6}
+</style>
+</head>
+<body>
+
+<header>
+  <p class="kicker">MVP v0 · screen draft</p>
+  <h1>Twin — dump, structure, practice, prove</h1>
+  <p class="sub">Static preview of the four screens. Real content from your week is used as sample data.
+     Nothing here is clickable — it is a design draft to argue with before code exists.</p>
+  <div class="loop">
+    <span>dump</span><i>→</i><span>AI structures</span><i>→</i><span>you confirm</span><i>→</i>
+    <span>store</span><i>→</i><span>practice</span><i>→</i><span>evidence</span><i>→</i>
+    <span>weekly review</span><i>→</i><span>self-image</span>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- 1. DUMP -->
+  <div class="rail">
+    <div class="phone">
+      <div class="statusbar"><span>21:14</span><span><span class="dot"></span>wifi · 84%</span></div>
+      <div class="body">
+        <div class="top">
+          <div><h2>Dump</h2><div class="meta">Tue 3 Nov · under pressure</div></div>
+          <div class="icon">⚙</div>
+        </div>
+
+        <div class="editor">
+          <p>today i noticed i postpone the CV every time i open the site. maybe it's not laziness —
+             it's that i can't see the next step. also i felt guilty resting after lunch<span class="ghost">…</span></p>
+          <div class="mic">🎙</div>
+        </div>
+
+        <div class="modes">
+          <div class="pill on">daily</div><div class="pill">weekly</div>
+        </div>
+        <button class="btn">Analyze</button>
+
+        <div class="proposal">
+          <div class="head"><span><b>AI found</b> · 2 insights · 1 task</span><span>9 s</span></div>
+          <div class="row"><div class="box on">✓</div><div>"If I loosen control, nothing decays."<span class="tag">practice: 10-min rest after lunch · cue: 14:00</span></div></div>
+          <div class="row"><div class="box on">✓</div><div>Rewrite CV summary before opening job sites<span class="tag">next action: 1 sentence, 2 min</span></div></div>
+          <div class="row"><div class="box"></div><div>Friction: no navigation vision on job sites<span class="tag">cognitive · no action taken</span></div></div>
+          <div class="inline"><button class="btn sm">Save 2 items</button><div class="link">Dismiss</div></div>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.5-1 9-9-3.5-3.5-9 9L4 20z"/></svg>Dump</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3l8 4.6-8 4.6-8-4.6z"/><path d="M4 12.2l8 4.6 8-4.6"/><path d="M4 16.8l8 4.6 8-4.6"/></svg>Insights</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M8.5 12l2.6 2.6L16 9.6"/></svg>Plan</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.4-3.9 3.9-5.9 7-5.9S17.6 16.1 19 20"/></svg>Self</div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+    <div class="label"><b>1 · Dump</b> — capture in two taps; AI proposes, you tick</div>
+  </div>
+
+  <!-- 2. INSIGHTS -->
+  <div class="rail">
+    <div class="phone">
+      <div class="statusbar"><span>21:16</span><span><span class="dot"></span>wifi · 84%</span></div>
+      <div class="body">
+        <div class="top">
+          <div><h2>Insights</h2><div class="meta">the ledger · 3 of 5 active</div></div>
+          <div class="icon">⌕</div>
+        </div>
+
+        <div class="chips">
+          <div class="chip on">active 3/5</div><div class="chip">practicing 1</div><div class="chip">all</div>
+        </div>
+
+        <div class="card">
+          <div class="badge"><span class="d active"></span>active</div>
+          <div class="stmt">"If I loosen control, nothing decays."</div>
+          <div class="kvs">
+            <b>practice</b> 10-min rest after lunch, phone away<br>
+            <b>cue</b> 14:00 timer · <b>evidence</b> 2 / 3
+          </div>
+          <div class="foot"><button class="btn sm">Log evidence</button><button class="btn sm ghost">Make practice</button></div>
+        </div>
+
+        <div class="card">
+          <div class="badge"><span class="d prac"></span>practicing</div>
+          <div class="stmt">"Rumination is a signal to shrink the task, not to push harder."</div>
+          <div class="kvs">
+            <b>practice</b> write the next physical action, 2 min max<br>
+            <b>cue</b> before any drive task · <b>evidence</b> 1 / 3
+          </div>
+          <div class="foot"><button class="btn sm">Log evidence</button><button class="btn sm ghost">⋯</button></div>
+        </div>
+
+        <div class="counter">Ask me: "did you rest yesterday?" — no evidence, confidence frozen. That is the rule.</div>
+      </div>
+      <div class="tabs">
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.5-1 9-9-3.5-3.5-9 9L4 20z"/></svg>Dump</div>
+        <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3l8 4.6-8 4.6-8-4.6z"/><path d="M4 12.2l8 4.6 8-4.6"/><path d="M4 16.8l8 4.6 8-4.6"/></svg>Insights</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M8.5 12l2.6 2.6L16 9.6"/></svg>Plan</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.4-3.9 3.9-5.9 7-5.9S17.6 16.1 19 20"/></svg>Self</div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+    <div class="label"><b>2 · Insights</b> — what I believe, how I test it, capped at five</div>
+  </div>
+
+  <!-- 3. PLAN -->
+  <div class="rail">
+    <div class="phone">
+      <div class="statusbar"><span>21:18</span><span><span class="dot"></span>wifi · 84%</span></div>
+      <div class="body">
+        <div class="top">
+          <div><h2>Plan</h2><div class="meta">week 45 · 3–9 Nov</div></div>
+          <div class="icon">＋</div>
+        </div>
+
+        <p class="goal">Goal: CV v2 sent · 5 HK roles logged · 2 emails tracked</p>
+
+        <div class="section-label">Outputs</div>
+        <div class="card">
+          <div class="row"><div class="box on">✓</div><div class="done">CV PDF v1</div></div>
+          <div class="row"><div class="box"></div><div>5 roles logged with fit score</div></div>
+          <div class="row"><div class="box"></div><div>2 emails sent + tracked</div></div>
+        </div>
+
+        <div class="section-label">Boundaries</div>
+        <div class="card">
+          <div class="kv-line"><b>experiment</b><span>2-min action card before each drive task</span></div>
+          <div class="kv-line"><b>stop</b><span>scrolling after 23:00</span></div>
+          <div class="kv-line"><b>protect</b><span>2 meditation blocks</span></div>
+        </div>
+
+        <div class="section-label">Today</div>
+        <div class="card">
+          <div class="row"><div class="box"></div><div>10-min rest after lunch</div></div>
+          <div class="row"><div class="box"></div><div>rewrite CV summary · 15 min</div></div>
+        </div>
+
+        <div class="divider"></div>
+        <button class="btn ghost">Start weekly review</button>
+      </div>
+      <div class="tabs">
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.5-1 9-9-3.5-3.5-9 9L4 20z"/></svg>Dump</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3l8 4.6-8 4.6-8-4.6z"/><path d="M4 12.2l8 4.6 8-4.6"/><path d="M4 16.8l8 4.6 8-4.6"/></svg>Insights</div>
+        <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M8.5 12l2.6 2.6L16 9.6"/></svg>Plan</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.4-3.9 3.9-5.9 7-5.9S17.6 16.1 19 20"/></svg>Self</div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+    <div class="label"><b>3 · Plan</b> — three outputs, one experiment, one boundary</div>
+  </div>
+
+  <!-- 4. SELF -->
+  <div class="rail">
+    <div class="phone">
+      <div class="statusbar"><span>21:20</span><span><span class="dot"></span>wifi · 84%</span></div>
+      <div class="body">
+        <div class="top">
+          <div><h2>Self</h2><div class="meta">identity evidence · 1 active claim</div></div>
+          <div class="icon">＋</div>
+        </div>
+
+        <div class="section-label">Claim</div>
+        <div class="card">
+          <div class="claim">"I am someone who acts before feeling ready."</div>
+          <div class="bar"><i></i></div>
+          <div class="barcap"><span>confidence 60%</span><span>3 evidences · 1 context</span></div>
+        </div>
+
+        <div class="section-label">Decomposition</div>
+        <div class="card">
+          <div class="act"><div class="box on">✓</div><div><div class="txt">send the email before polishing it</div>
+            <div class="ev">12 Nov · sent with 2 typos, nothing broke</div></div></div>
+          <div class="act"><div class="box on">✓</div><div><div class="txt">ask one question in class</div>
+            <div class="ev">13 Nov · asked, voice shook, survived</div></div></div>
+          <div class="act"><div class="box"></div><div><div class="txt">publish one rough note</div>
+            <div class="ev none">no evidence yet</div></div></div>
+        </div>
+
+        <div class="counter"><b style="color:#c9cfe1;font-weight:600">Counter-evidence:</b> 3 days I re-polished the CV
+          instead of sending. Kept — the model must not inflate.</div>
+
+        <div class="inline"><button class="btn sm">Add evidence</button><button class="btn sm ghost">New claim</button></div>
+      </div>
+      <div class="tabs">
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.5-1 9-9-3.5-3.5-9 9L4 20z"/></svg>Dump</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3l8 4.6-8 4.6-8-4.6z"/><path d="M4 12.2l8 4.6 8-4.6"/><path d="M4 16.8l8 4.6 8-4.6"/></svg>Insights</div>
+        <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M8.5 12l2.6 2.6L16 9.6"/></svg>Plan</div>
+        <div class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.4-3.9 3.9-5.9 7-5.9S17.6 16.1 19 20"/></svg>Self</div>
+      </div>
+      <div class="homebar"></div>
+    </div>
+    <div class="label"><b>4 · Self</b> — claim → 3 actions → dated evidence → confidence</div>
+  </div>
+
+</div>
+
+<p class="legend">Dark theme, single column, thumb-reachable tab bar, safe-area aware. Same content as
+<code>docs/MVP_v0_DRAFT.md</code> · mockup is static, no logic.</p>
+
+</body>
+</html>
