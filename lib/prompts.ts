@@ -1,6 +1,6 @@
 import type { Mode } from './types'
 
-const language = () => {
+export function language(): string {
   const lang = (process.env.AI_LANG || 'en').toLowerCase()
   if (lang.startsWith('ru')) return 'Russian'
   return 'English'
@@ -20,8 +20,10 @@ Rules:
    evidence_question (the fact that would show it happened, not a feeling), confidence (0..1).
 3. task = something to do. title short; next_action = the first physical step, startable in two minutes;
    due_hint exactly one of "today", "this week", "someday".
-4. friction = obstacles the person reports. tag is exactly one of:
-   cognitive (overthinking, no navigation, vague plan), emotional (fear, tension, control),
+4. friction = obstacles the person describes, one entry per distinct obstacle. If the text mentions fear,
+   tension, guilt, overthinking, a blocked action, a missing structure or another person, record it.
+   An empty friction list is correct only when nothing blocked anything. tag is exactly one of:
+   cognitive (overthinking, no navigation, vague plan), emotional (fear, tension, control, guilt),
    environmental (no time block, too many tabs, phone), relational (other people).
 5. identity_signals = only if the text shows a claim about who the person is, with the supporting evidence quoted or paraphrased. Max 1.
 6. sprint = null unless mode is weekly. In weekly mode fill: goal, exactly 3 outputs (concrete results, not activities),
@@ -36,6 +38,7 @@ export function userPrompt(text: string, mode: Mode): string {
   const today = new Date().toISOString().slice(0, 10)
   return `MODE: ${mode}
 DATE: ${today}
+LANGUAGE: ${language()}. Write every string in ${language()}, even if the dump is in another language.
 Write the JSON now.
 
 --- BEGIN DUMP ---

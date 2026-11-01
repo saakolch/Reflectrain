@@ -62,45 +62,85 @@ function extractJson(content: string): unknown {
   }
 }
 
-async function callModel(target: ChatTarget, text: string, mode: Mode): Promise<string> {
-  const base = {
-    model: target.model,
-    messages: [
-      { role: 'system', content: systemPrompt() },
-      { role: 'user', content: userPrompt(text, mode) },
-    ],
-    temperature: 0.3,
-    max_tokens: 2000,
-  }
+async function callModel(target: ChatTarget, text: string, mode: Mode, strict = false): Promise<string> {
+  const messages: { role: 'system' | 'user'; content: string }[] = [
+    { role: 'system', content: systemPrompt() },
+    { role: 'user', content: userPrompt(text, mode) },
+  ]
 
-  async function post(withJsonMode: boolean) {
-    return fetch(target.url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...target.headers },
-      body: JSON.stringify(withJsonMode ? { ...base, response_format: { type: 'json_object' } } : base),
-      signal: AbortSignal.timeout(60_000),
+  if (strict) {
+    messages.push({
+      role: 'user',
+      content:
+        'Return ONLY valid JSON, no prose. Keep every string under 160 characters, at most 3 insights, 4 tasks and 5 friction entries.',
     })
   }
 
-  let res = await post(true)
+  const base = {
+    model: target.model,
+    messages,
+    temperature: strict ? 0.2 : 0.3,
+    max_tokens: strict ? 6000 : 4000,
+  }
+
+  async function post(body: unknown) {
+    return fetch(target.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...target.headers },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(90_000),
+    })
+  }
+
+  async function parse(res: Response): Promise<string> {
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      throw new Error(`${target.provider} ${res.status}: ${body.slice(0, 200)}`)
+    }
+    const payload = (await res.json()) as {
+      choices?: { message?: { content?: string | null }; finish_reason?: string }[]
+      error?: { message?: string }
+    }
+    if (payload.error?.message) throw new Error(`${target.provider}: ${payload.error.message}`)
+
+    const choice = payload.choices?.[0]
+    // A cut-off answer is invalid JSON; retry in strict mode instead of storing garbage.
+    if (choice?.finish_reason === 'length') {
+      throw new Error(`${target.provider} truncated the response (finish_reason=length)`)
+    }
+
+    return (choice?.message?.content ?? '').trim()
+  }
+
+  let res = await post({ ...base, response_format: { type: 'json_object' } })
 
   // Some providers/models reject response_format; retry once without it.
   if (!res.ok && (res.status === 400 || res.status === 422)) {
     const body = await res.text().catch(() => '')
     if (/response_format|json_object|not supported/i.test(body)) {
-      res = await post(false)
+      res = await post(base)
     } else {
       throw new Error(`${target.provider} ${res.status}: ${body.slice(0, 200)}`)
     }
   }
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    throw new Error(`${target.provider} ${res.status}: ${body.slice(0, 200)}`)
+  let content = await parse(res)
+
+  // Reasoning models sometimes burn the whole budget thinking and return empty content.
+  if (!content) {
+    const retry = await post({
+      ...base,
+      max_tokens: 6000,
+      temperature: 0.2,
+      messages: [
+        ...base.messages,
+        { role: 'user', content: 'Return only the JSON object now. No prose, no reasoning.' },
+      ],
+      response_format: { type: 'json_object' },
+    })
+    content = await parse(retry)
   }
 
-  const payload = (await res.json()) as { choices?: { message?: { content?: string } }[] }
-  const content = payload.choices?.[0]?.message?.content
   if (!content) throw new Error(`${target.provider} returned no content`)
   return content
 }
@@ -136,18 +176,30 @@ function normalize(raw: unknown, mode: Mode): Proposal {
   const tags = ['cognitive', 'emotional', 'environmental', 'relational']
   const friction: ProposalFriction[] = arr(o.friction)
     .map((f) => {
+      // models drift: "text" today, "description" or "obstacle" tomorrow
+      if (typeof f === 'string') {
+        return { text: f.trim(), tag: 'cognitive' as ProposalFriction['tag'] }
+      }
       const r = (f ?? {}) as Record<string, unknown>
       const tag = str(r.tag).toLowerCase()
       return {
-        text: str(r.text),
+        text: str(r.text) || str(r.description) || str(r.obstacle) || str(r.note),
         tag: (tags.includes(tag) ? tag : 'cognitive') as ProposalFriction['tag'],
       }
     })
     .filter((f) => f.text.length > 0)
     .slice(0, 6)
 
-  const energyRaw = (o.energy ?? null) as Record<string, unknown> | null
-  const energy = energyRaw ? { note: str(energyRaw.note), pattern: str(energyRaw.pattern) } : null
+  const energyRaw = o.energy
+  const energy =
+    energyRaw && typeof energyRaw === 'object'
+      ? {
+          note: str((energyRaw as Record<string, unknown>).note),
+          pattern: str((energyRaw as Record<string, unknown>).pattern),
+        }
+      : typeof energyRaw === 'string' && energyRaw.trim()
+        ? { note: energyRaw.trim(), pattern: '' }
+        : null
 
   const identity_signals = arr(o.identity_signals)
     .map((s) => {
@@ -160,6 +212,8 @@ function normalize(raw: unknown, mode: Mode): Proposal {
   let sprint: ProposalSprint | null = null
   if (mode === 'weekly' && o.sprint) {
     const s = o.sprint as Record<string, unknown>
+    // some models nest the review text under "review"
+    const review = (s.review ?? {}) as Record<string, unknown>
     const outputs = arr(s.outputs)
       .map((x) => str(x))
       .filter(Boolean)
@@ -170,9 +224,9 @@ function normalize(raw: unknown, mode: Mode): Proposal {
       experiment: str(s.experiment),
       stop: str(s.stop),
       protect: str(s.protect),
-      progress: str(s.progress),
-      resistance: str(s.resistance),
-      changes: str(s.changes),
+      progress: str(s.progress) || str(review.progress),
+      resistance: str(s.resistance) || str(review.resistance),
+      changes: str(s.changes) || str(review.changes),
     }
   }
 
@@ -251,16 +305,25 @@ export async function analyze(text: string, mode: Mode): Promise<Proposal> {
   const target = chatTarget()
   if (!target) return { ...mockProposal(text, mode), provider: 'mock' }
 
-  try {
-    const content = await callModel(target, text, mode)
-    const proposal = normalize(extractJson(content), mode)
-    return { ...proposal, provider: `${target.provider} · ${target.model}` }
-  } catch (error) {
-    console.error('[analyze] model call failed, using mock:', error)
-    const fallback = mockProposal(text, mode)
-    fallback.summary = `AI call failed (${error instanceof Error ? error.message : 'unknown'}), mock structure used. ${fallback.summary}`
-    return { ...fallback, provider: 'mock' }
+  let lastError: unknown = null
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const content = await callModel(target, text, mode, attempt > 1)
+      if (process.env.AI_DEBUG === '1') {
+        console.log(`[analyze] attempt ${attempt} raw:`, content.slice(0, 3000))
+      }
+      const proposal = normalize(extractJson(content), mode)
+      return { ...proposal, provider: `${target.provider} · ${target.model}` }
+    } catch (error) {
+      lastError = error
+      console.error(`[analyze] attempt ${attempt} failed:`, error)
+    }
   }
+
+  const fallback = mockProposal(text, mode)
+  fallback.summary = `AI call failed (${lastError instanceof Error ? lastError.message : 'unknown'}), mock structure used. ${fallback.summary}`
+  return { ...fallback, provider: 'mock' }
 }
 
 export { aiProvider }

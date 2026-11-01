@@ -4,13 +4,17 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 type CookieToSet = { name: string; value: string; options?: CookieOptions }
 
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname
+
+  // API routes authenticate themselves and must answer with JSON, never with an
+  // HTML redirect or the setup page.
+  if (path.startsWith('/api')) return NextResponse.next()
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   // Without credentials every page would throw inside the Supabase client.
-  // Rewrite to a setup screen instead of failing.
   if (!url || !key) {
-    const path = request.nextUrl.pathname
     if (path === '/setup') return NextResponse.next()
     return NextResponse.rewrite(new URL('/setup', request.url))
   }
@@ -34,7 +38,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const path = request.nextUrl.pathname
   const isLogin = path === '/login'
 
   if (!user && !isLogin) {
